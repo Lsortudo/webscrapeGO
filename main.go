@@ -13,16 +13,8 @@ var baseURL = "https://mangapark.net"
 func main() {
 	c := colly.NewCollector()
 
-	// Procura pelo capítulo 1146
-	// c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-	// 	if strings.Contains(e.Text, "Ch. 1146") {
-	// 		chapterURL := "https://comick.io" + e.Attr("href")
-	// 		fmt.Println("Encontrado:", chapterURL)
-	// 		goToChapter(chapterURL)
-	// 	}
-	// })
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		//fmt.Println("Link encontrado:", e.Text, "→", e.Attr("href"))
+		fmt.Println("Link encontrado:", e.Text, "→", e.Attr("href"))
 
 		if strings.Contains(e.Text, "Vol.TBE Ch.1146") {
 			chapterURL := baseURL + e.Attr("href")
@@ -36,8 +28,9 @@ func main() {
 }
 
 /* TO DO
-Entrar no site (ja especificado qual maanga)
-Percorrer a lista toda de todos os capitulos
+X Entrar no site (ja especificado qual maanga)
+X Percorrer a lista toda de todos os capitulos
+X Listar todos os links (possiveis capitulos que posso pegar)
 Entrar nesses capitulos
 Baixar as imagens
 Salvar como PDF (ou talvez mando individualmente, ver qual é melhor)
