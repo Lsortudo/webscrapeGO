@@ -1,0 +1,5 @@
+k thats a TXT file just for my future self
+
+O motivo de nao conseguir pegar nenhumma imagem mesmo depois de entrar no link é pq provavelmente ele renderiza la.
+Percebi isso pq ele demoraa pra carregara, mas é o site todo, porem no mangafire eles tem uma imaagem de loading pra CADA imagem do capitulo, entao as vezes o servidor deles ta ruim e nao carrega uma ou outra.
+Pesquisei e falam de um tal de chromedp que pode ajudar
