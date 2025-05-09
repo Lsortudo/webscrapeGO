@@ -1,18 +1,19 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/gocolly/colly"
-	"github.com/signintech/gopdf"
 )
 
 var (
@@ -101,25 +102,59 @@ func scrape() {
 	}
 
 	// Gera o PDF
-	err = imagesToPDF(filenames, "one_piece_chapter_1146.pdf")
+	err = createCBZ(filenames, "one_piece_chapter_1146.cbz")
 	if err != nil {
-		log.Fatal("Erro ao gerar PDF:", err)
+		log.Fatal("Erro ao gerar CBZ:", err)
 	}
 
-	fmt.Println("PDF gerado com sucesso!")
+	fmt.Println("CBZ gerado com sucesso!")
 }
 
-func imagesToPDF(images []string, output string) error {
-	pdf := gopdf.GoPdf{}
-	pdf.Start(gopdf.Config{PageSize: *gopdf.PageSizeA4})
-	for _, img := range images {
-		pdf.AddPage()
-		err := pdf.Image(img, 0, 0, &gopdf.Rect{W: 595.28, H: 841.89}) // A4
+func createCBZ(files []string, output string) error {
+	cbzFile, err := os.Create(output)
+	if err != nil {
+		return err
+	}
+	defer cbzFile.Close()
+
+	zipWriter := zip.NewWriter(cbzFile)
+	defer zipWriter.Close()
+
+	for _, file := range files {
+		err := addFileToZip(zipWriter, file)
 		if err != nil {
 			return err
 		}
 	}
-	return pdf.WritePdf(output)
+	return nil
+}
+
+func addFileToZip(zipWriter *zip.Writer, filename string) error {
+	fileToZip, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer fileToZip.Close()
+
+	info, err := fileToZip.Stat()
+	if err != nil {
+		return err
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return err
+	}
+	header.Name = filepath.Base(filename)
+	header.Method = zip.Deflate
+
+	writer, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(writer, fileToZip)
+	return err
 }
 
 /* TO DO
