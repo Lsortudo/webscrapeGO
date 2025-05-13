@@ -17,7 +17,7 @@ import (
 
 var (
 	baseURL = "https://mangapark.net"
-	mainURL = "https://mangapark.net/title/10953-en-one-piece"
+	mainURL = "https://mangapark.net/title/74491-en-blue-lock"
 )
 
 func main() {
@@ -83,8 +83,8 @@ func scrape() {
 	var imageLinks []string
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(fullChapterURL),
-		chromedp.WaitVisible(`img`, chromedp.ByQuery),
-		chromedp.Evaluate(`Array.from(document.querySelectorAll('img')).map(img => img.src)`, &imageLinks),
+		chromedp.WaitVisible(`div.grid-cols-1 div[data-name="image-item"] img`, chromedp.ByQuery),
+		chromedp.Evaluate(`Array.from(document.querySelectorAll('div.grid-cols-1 div[data-name="image-item"] img')).map(img => img.src)`, &imageLinks),
 	)
 	if err != nil {
 		log.Fatal("Erro ao extrair imagens com chromedp:", err)
