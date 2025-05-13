@@ -9,17 +9,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
 	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/gocolly/colly"
 )
 
 var (
-	baseURL       = "https://mangapark.net"
-	mainURL       = "https://mangapark.net/title/10953-en-one-piece"
-	targetChapter = "Vol.TBE Ch.1146"
+	baseURL = "https://mangapark.net"
+	mainURL = "https://mangapark.net/title/10953-en-one-piece"
 )
 
 func main() {
@@ -45,34 +43,46 @@ func downloadImage(url, filepath string) error {
 }
 
 func scrape() {
-	var chapterURL string
-
-	c := colly.NewCollector()
-	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		if strings.Contains(e.Text, targetChapter) {
-			chapterURL = baseURL + e.Attr("href")
-			fmt.Println("Capítulo encontrado:", chapterURL)
-		}
-	})
-	err := c.Visit(mainURL)
-	if err != nil {
-		log.Fatal("Erro ao visitar página principal:", err)
-	}
-	if chapterURL == "" {
-		log.Fatal("Capítulo não encontrado!")
-	}
-
-	// Acessando a pagina do cap pra pegar as imgs, ja que antes nao taava funcionando com 100% colly (talvez pq as imgs carregavam no JS ou algo do tipo, mas com o chromeDP funcionou)
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
-
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
+	var chapterHref string
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(mainURL),
+		chromedp.WaitVisible(`div.group.flex.flex-col`, chromedp.ByQuery),
+		chromedp.AttributeValue(
+			`div.group.flex.flex-col a`,
+			"href",
+			&chapterHref,
+			nil,
+			chromedp.ByQuery,
+		),
+	)
+	if err != nil {
+		log.Fatal("Erro ao encontrar capítulo:", err)
+	}
+	if chapterHref == "" {
+		log.Fatal("Capítulo não encontrado!")
+	}
+
+	fullChapterURL := baseURL + chapterHref
+	fmt.Println("Último capítulo encontrado:", fullChapterURL)
+
+	var chapterID string
+	// Usa expressão regular para extrair os dígitos do final da URL (usar substring do final igual Aldo ensinou)
+	re := regexp.MustCompile(`(\d+)$`)
+	match := re.FindStringSubmatch(chapterHref)
+	if len(match) > 1 {
+		chapterID = match[1]
+	} else {
+		chapterID = "latest"
+	}
+
 	var imageLinks []string
-	// Executa o Chrome
 	err = chromedp.Run(ctx,
-		chromedp.Navigate(chapterURL),
+		chromedp.Navigate(fullChapterURL),
 		chromedp.WaitVisible(`img`, chromedp.ByQuery),
 		chromedp.Evaluate(`Array.from(document.querySelectorAll('img')).map(img => img.src)`, &imageLinks),
 	)
@@ -86,8 +96,6 @@ func scrape() {
 	}
 
 	fmt.Printf("Foram encontradas %d imagens.\n", len(imageLinks))
-
-	// Temp pasta
 	os.Mkdir("images", os.ModePerm)
 
 	var filenames []string
@@ -101,13 +109,13 @@ func scrape() {
 		}
 	}
 
-	// Gera o PDF
-	err = createCBZ(filenames, "one_piece_chapter_1146.cbz")
+	outputFile := fmt.Sprintf("one_piece_ch_%s.cbz", chapterID)
+	err = createCBZ(filenames, outputFile)
 	if err != nil {
 		log.Fatal("Erro ao gerar CBZ:", err)
 	}
 
-	fmt.Println("CBZ gerado com sucesso!")
+	fmt.Println("CBZ gerado com sucesso:", outputFile)
 }
 
 func createCBZ(files []string, output string) error {
@@ -156,13 +164,3 @@ func addFileToZip(zipWriter *zip.Writer, filename string) error {
 	_, err = io.Copy(writer, fileToZip)
 	return err
 }
-
-/* TO DO
-X Entrar no site (ja especificado qual maanga)
-X Percorrer a lista toda de todos os capitulos
-X Listar todos os links (possiveis capitulos que posso pegar)
-X Entrar nesses capitulos
-X Baixar as imagens
-X Salvar como PDF (ou talvez mando individualmente, ver qual é melhor)
-Tambem enviar os dados como releaseDate e o nome/title do capitulo, pra poder usar no meu site todas essas informacoes
-*/
